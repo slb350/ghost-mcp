@@ -9,8 +9,5 @@ export default defineConfig({
   clean: true,
   shims: true,
   minify: false,
-  target: 'node18',
-  banner: {
-    js: '#!/usr/bin/env node'
-  }
+  target: 'node18'
 });

@@ -188,7 +188,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
   const posts = await contentApi.posts.browse({ limit: 5 });
   
   return {
-    resources: posts.map(post => ({
+    resources: posts.map((post: any) => ({
       uri: `ghost://posts/${post.slug}`,
       name: post.title,
       description: post.excerpt || 'No excerpt available',
@@ -218,6 +218,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   };
 });
 
+
 // Handle tool calls
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
@@ -226,14 +227,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case 'create_post': {
         const params = CreatePostSchema.parse(args);
-        const post = await adminApi.posts.add({
+        
+        // Build post data
+        const postData: any = {
           title: params.title,
           html: params.content,
-          status: params.status,
-          tags: params.tags,
-          custom_excerpt: params.excerpt,
-          featured: params.featured,
-        }, { source: 'ghost-mcp' });
+        };
+        
+        // Only add optional fields if they're provided
+        if (params.status) postData.status = params.status;
+        if (params.tags && params.tags.length > 0) postData.tags = params.tags;
+        if (params.excerpt) postData.custom_excerpt = params.excerpt;
+        if (params.featured !== undefined) postData.featured = params.featured;
+        
+        // Debug logging
+        console.error('Creating post with data:', JSON.stringify(postData, null, 2));
+        
+        const post = await adminApi.posts.add(postData, { source: 'html' });
         
         return {
           content: [
@@ -247,7 +257,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'update_post': {
         const params = UpdatePostSchema.parse(args);
-        const updateData: any = {};
+        
+        // First fetch the current post to get updated_at
+        // @ts-ignore - TypeScript types are incomplete
+        const currentPost = await adminApi.posts.read({ id: params.id });
+        
+        const updateData: any = {
+          id: params.id,
+          updated_at: currentPost.updated_at, // Required for updates
+        };
         
         if (params.title) updateData.title = params.title;
         if (params.content) updateData.html = params.content;
@@ -256,10 +274,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (params.excerpt) updateData.custom_excerpt = params.excerpt;
         if (params.featured !== undefined) updateData.featured = params.featured;
         
-        const post = await adminApi.posts.edit({
-          id: params.id,
-          ...updateData,
-        }, { source: 'ghost-mcp' });
+        const post = await adminApi.posts.edit(updateData, { source: 'html' });
         
         return {
           content: [
@@ -288,7 +303,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           fields: ['id', 'title', 'slug', 'status', 'published_at', 'excerpt'],
         });
         
-        const postList = posts.map(post => 
+        const postList = posts.map((post: any) => 
           `- ${post.title} (${post.status})\n  ID: ${post.id}\n  Slug: ${post.slug}\n  ${post.excerpt || 'No excerpt'}`
         ).join('\n\n');
         
@@ -304,16 +319,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'get_post': {
         const { id } = args as { id: string };
-        const post = await contentApi.posts.read({ id }, { formats: ['html'] });
         
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `# ${post.title}\n\nStatus: ${post.status}\nPublished: ${post.published_at || 'Not published'}\nURL: ${post.url}\n\n## Content:\n${post.html}`,
-            },
-          ],
-        };
+        try {
+          // Try as ID first
+          const post = await contentApi.posts.read({ id });
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `# ${post.title}\n\nSlug: ${post.slug}\nPublished: ${post.published_at || 'Not published'}\nURL: ${post.url}\nFeatured: ${post.featured || false}\nExcerpt: ${post.custom_excerpt || post.excerpt || 'None'}\n\n## Content:\n${post.html || 'No HTML content available'}`,
+              },
+            ],
+          };
+        } catch (error) {
+          // If ID fails, try as slug
+          try {
+            const post = await contentApi.posts.read({ slug: id });
+            
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `# ${post.title}\n\nSlug: ${post.slug}\nPublished: ${post.published_at || 'Not published'}\nURL: ${post.url}\nFeatured: ${post.featured || false}\nExcerpt: ${post.custom_excerpt || post.excerpt || 'None'}\n\n## Content:\n${post.html || 'No HTML content available'}`,
+                },
+              ],
+            };
+          } catch (slugError) {
+            throw error; // Throw original error
+          }
+        }
       }
 
       case 'delete_post': {
@@ -334,7 +369,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { limit = 20 } = args as { limit?: number };
         const tags = await contentApi.tags.browse({ limit });
         
-        const tagList = tags.map(tag => 
+        const tagList = tags.map((tag: any) => 
           `- ${tag.name} (${tag.slug}) - ${tag.count?.posts || 0} posts`
         ).join('\n');
         
@@ -366,12 +401,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
-  } catch (error) {
+  } catch (error: any) {
+    // Extract detailed error information
+    let errorMessage = 'Unknown error occurred';
+    let errorDetails = '';
+    
+    if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    if (error.data?.errors) {
+      errorDetails = '\n\nDetails: ' + JSON.stringify(error.data.errors, null, 2);
+    } else if (error.response?.data) {
+      errorDetails = '\n\nResponse: ' + JSON.stringify(error.response.data, null, 2);
+    } else if (error.errors) {
+      errorDetails = '\n\nErrors: ' + JSON.stringify(error.errors, null, 2);
+    }
+    
     return {
       content: [
         {
           type: 'text',
-          text: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+          text: `Error: ${errorMessage}${errorDetails}`,
         },
       ],
     };

@@ -1,6 +1,6 @@
 {
-  "name": "@mcpanvil/ghost-mcp",
-  "version": "0.1.0",
+  "name": "ghost-mcp",
+  "version": "0.1.7",
   "description": "Model Context Protocol server for Ghost CMS - manage your blog content with AI",
   "keywords": ["mcp", "ghost", "cms", "blog", "ai", "claude", "cursor"],
   "author": "MCPAnvil",
@@ -46,7 +46,7 @@
     "@typescript-eslint/parser": "^8.21.0",
     "eslint": "^8.57.0",
     "tsup": "^8.3.5",
-    "tsx": "^4.21.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.4.5",
     "vitest": "^2.1.8"
   },

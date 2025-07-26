@@ -15,7 +15,7 @@ A Model Context Protocol (MCP) server for Ghost CMS. Manage your Ghost blog cont
 
 ### NPM (recommended)
 ```bash
-npm install -g @mcpanvil/ghost-mcp
+npm install -g ghost-mcp
 ```
 
 ### From Source
@@ -54,7 +54,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "ghost": {
       "command": "npx",
-      "args": ["@mcpanvil/ghost-mcp"],
+      "args": ["ghost-mcp"],
       "env": {
         "GHOST_URL": "https://your-site.ghost.io",
         "GHOST_ADMIN_API_KEY": "your-admin-key",
@@ -68,17 +68,15 @@ Add to your `claude_desktop_config.json`:
 ### With Claude Code
 
 ```bash
-# Install globally first
-npm install -g @mcpanvil/ghost-mcp
-
-# Add to Claude Code
-claude mcp add ghost "npx @mcpanvil/ghost-mcp"
-
-# Set environment variables
-export GHOST_URL="https://your-site.ghost.io"
-export GHOST_ADMIN_API_KEY="your-admin-key"
-export GHOST_CONTENT_API_KEY="your-content-key"
+# Add to Claude Code with your Ghost credentials
+claude mcp add ghost \
+  -e GHOST_URL=https://your-site.ghost.io \
+  -e GHOST_ADMIN_API_KEY=your-admin-key \
+  -e GHOST_CONTENT_API_KEY=your-content-key \
+  -- npx ghost-mcp
 ```
+
+Get your API keys from Ghost Admin → Settings → Integrations.
 
 ### With Cursor
 
@@ -107,12 +105,17 @@ Create a new blog post.
 {
   title: string;        // Required
   content: string;      // Required (HTML or Markdown)
-  status?: 'draft' | 'published';
+  status?: 'draft' | 'published';  // Default: 'draft' - set to 'published' to make live
   tags?: string[];
   excerpt?: string;
   featured?: boolean;
 }
 ```
+
+**⚠️ Important Notes:**
+- Posts are created as **drafts by default**. To publish immediately, set `status: 'published'`
+- Ghost v5 uses Lexical format internally, but this MCP handles HTML/Markdown conversion automatically
+- When viewing draft posts in Ghost admin, they may appear empty due to format conversion - this is normal
 
 ### update_post
 Update an existing post.
@@ -177,8 +180,28 @@ Get analytics information (requires additional setup).
 }
 ```
 
+## Troubleshooting
+
+### Updates Not Working
+If post updates don't seem to be applying:
+1. Check browser cache - Ghost aggressively caches content
+2. Verify the post status - drafts may not show updates immediately
+3. Ensure you're using ghost-mcp v0.1.6 or later (earlier versions had an update bug)
+
+### Empty Content in Ghost Admin
+When viewing posts in Ghost admin, content may appear empty. This is because:
+- Ghost v5 uses Lexical format internally
+- The MCP creates posts in HTML format
+- The admin panel may not display HTML content in the editor
+- **Your published posts will display correctly** on your site
+
+### Common Issues
+- **"Validation error, cannot save post"**: Usually means required fields are missing
+- **"Cannot read post"**: The post ID may be incorrect or the post was deleted
+- **Draft posts not visible**: Check your Ghost admin's post filter settings
+
 ## Example Workflows
 
 ### Writing a New Blog Post
 ```
-Human: Create a draft blog post about building MCP servers
+Human: Create a published blog post about building MCP servers
