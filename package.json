@@ -5,13 +5,13 @@
   "keywords": ["mcp", "ghost", "cms", "blog", "ai", "claude", "cursor"],
   "author": "MCPAnvil",
   "license": "MIT",
-  "homepage": "https://github.com/mcpanvil/ghost-mcp",
+  "homepage": "https://github.com/slb350/ghost-mcp",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mcpanvil/ghost-mcp.git"
+    "url": "https://github.com/slb350/ghost-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/mcpanvil/ghost-mcp/issues"
+    "url": "https://github.com/slb350/ghost-mcp/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
